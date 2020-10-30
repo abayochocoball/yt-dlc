@@ -1388,6 +1388,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             # to be implemented in future that will replace this workaround (see
             # https://github.com/ytdl-org/youtube-dl/issues/7468,
             # https://github.com/ytdl-org/youtube-dl/pull/7599)
+            r'ytInitialPlayerResponse\s*=\s*({.+?});var meta',
             r';ytplayer\.config\s*=\s*({.+?});ytplayer',
             r';ytplayer\.config\s*=\s*({.+?});',
         )
@@ -1784,21 +1785,25 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                     # Try looking directly into the video webpage
                     ytplayer_config = self._get_ytplayer_config(video_id, video_webpage)
                     if ytplayer_config:
-                        args = ytplayer_config['args']
-                        if args.get('url_encoded_fmt_stream_map') or args.get('hlsvp'):
-                            # Convert to the same format returned by compat_parse_qs
-                            video_info = dict((k, [v]) for k, v in args.items())
-                            add_dash_mpd(video_info)
-                        # Rental video is not rented but preview is available (e.g.
-                        # https://www.youtube.com/watch?v=yYr8q0y5Jfg,
-                        # https://github.com/ytdl-org/youtube-dl/issues/10532)
-                        if not video_info and args.get('ypc_vid'):
-                            return self.url_result(
-                                args['ypc_vid'], YoutubeIE.ie_key(), video_id=args['ypc_vid'])
-                        if args.get('livestream') == '1' or args.get('live_playback') == 1:
-                            is_live = True
-                        if not player_response:
-                            player_response = extract_player_response(args.get('player_response'), video_id)
+                        if ytplayer_config.get('args'):
+                            args = ytplayer_config['args']
+                            if args.get('url_encoded_fmt_stream_map') or args.get('hlsvp'):
+                                # Convert to the same format returned by compat_parse_qs
+                                video_info = dict((k, [v]) for k, v in args.items())
+                                add_dash_mpd(video_info)
+                            # Rental video is not rented but preview is available (e.g.
+                            # https://www.youtube.com/watch?v=yYr8q0y5Jfg,
+                            # https://github.com/ytdl-org/youtube-dl/issues/10532)
+                            if not video_info and args.get('ypc_vid'):
+                                return self.url_result(
+                                    args['ypc_vid'], YoutubeIE.ie_key(), video_id=args['ypc_vid'])
+                            if args.get('livestream') == '1' or args.get('live_playback') == 1:
+                                is_live = True
+                            if not player_response:
+                                player_response = extract_player_response(args.get('player_response'), video_id)
+                        else:
+                            if not player_response:
+                                player_response = ytplayer_config
                     if not video_info or self._downloader.params.get('youtube_include_dash_manifest', True):
                         add_dash_mpd_pr(player_response)
                 else:
@@ -1829,21 +1834,25 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             # Try looking directly into the video webpage
             ytplayer_config = self._get_ytplayer_config(video_id, video_webpage)
             if ytplayer_config:
-                args = ytplayer_config['args']
-                if args.get('url_encoded_fmt_stream_map') or args.get('hlsvp'):
-                    # Convert to the same format returned by compat_parse_qs
-                    video_info = dict((k, [v]) for k, v in args.items())
-                    add_dash_mpd(video_info)
-                # Rental video is not rented but preview is available (e.g.
-                # https://www.youtube.com/watch?v=yYr8q0y5Jfg,
-                # https://github.com/ytdl-org/youtube-dl/issues/10532)
-                if not video_info and args.get('ypc_vid'):
-                    return self.url_result(
-                        args['ypc_vid'], YoutubeIE.ie_key(), video_id=args['ypc_vid'])
-                if args.get('livestream') == '1' or args.get('live_playback') == 1:
-                    is_live = True
-                if not player_response:
-                    player_response = extract_player_response(args.get('player_response'), video_id)
+                if ytplayer_config.get('args'):
+                    args = ytplayer_config['args']
+                    if args.get('url_encoded_fmt_stream_map') or args.get('hlsvp'):
+                        # Convert to the same format returned by compat_parse_qs
+                        video_info = dict((k, [v]) for k, v in args.items())
+                        add_dash_mpd(video_info)
+                    # Rental video is not rented but preview is available (e.g.
+                    # https://www.youtube.com/watch?v=yYr8q0y5Jfg,
+                    # https://github.com/ytdl-org/youtube-dl/issues/10532)
+                    if not video_info and args.get('ypc_vid'):
+                        return self.url_result(
+                            args['ypc_vid'], YoutubeIE.ie_key(), video_id=args['ypc_vid'])
+                    if args.get('livestream') == '1' or args.get('live_playback') == 1:
+                        is_live = True
+                    if not player_response:
+                        player_response = extract_player_response(args.get('player_response'), video_id)
+                else:
+                    if not player_response:
+                        player_response = ytplayer_config
             if not video_info or self._downloader.params.get('youtube_include_dash_manifest', True):
                 add_dash_mpd_pr(player_response)
 
